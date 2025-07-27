@@ -1,0 +1,9 @@
+.cursor
+.helper-bot/
+.vscode
+whisper_models
+logs
+postgres-data
+.env
+alembic/versions
+**__pycache__**

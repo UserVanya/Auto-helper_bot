@@ -1,0 +1,7 @@
+aiogram>=3.0.0
+aiogram-dialog>=2.0.0
+openai>=1.0.0
+environs>=9.0.0
+whisper
+psycopg2-binary
+sqlalchemy>=2.0.0 
