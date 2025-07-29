@@ -1,6 +1,17 @@
 from aiogram_dialog import Dialog, DialogManager, Window
 from aiogram_dialog.widgets.text import Const, Format, List
-from aiogram_dialog.widgets.kbd import Button, Row, Column, ScrollingGroup, Select, Cancel, Back, Group, Checkbox, SwitchTo
+from aiogram_dialog.widgets.kbd import (
+    Button,
+    Row,
+    Column,
+    ScrollingGroup,
+    Select,
+    Cancel,
+    Back,
+    Group,
+    Checkbox,
+    SwitchTo,
+)
 from aiogram_dialog.widgets.input import MessageInput, TextInput, ManagedTextInput
 from aiogram_dialog.widgets.kbd import Keyboard
 from aiogram.types import Message
@@ -15,9 +26,54 @@ from aiogram.types import CallbackQuery
 from aiogram_dialog.widgets.common import ManagedWidget
 import enum
 
+
 class TaskMode(enum.Enum):
     EDIT = "Режим: ✏️ Редактирование"
     CHANGE_STATUS = "Режим: 📊 Изменение статуса"
+
+
+def get_task_text(task: DbTask) -> str:
+    """
+    Format("🔹 {current_task.name}"),
+    Format("📝 Описание: {current_task.description}"),
+    Format("🔍 Статус: {current_task.status.value}"),
+    Const("🧩 Подзадачи:", when="has_subtasks"),
+    List(
+        field= Format("• {item}"),
+        items="text_for_subtasks"
+    ),
+    Format("🕒 Срок: {current_task.deadline}"),
+    Format("🏷️ Теги: {current_task.tag}"),
+    """
+    text = f"🔹 {task.name}\n"
+    if task.description:
+        text += f"📝 Описание: {task.description}\n"
+    text += f"🔍 Статус: {task.status.value}\n"
+    if task.deadline:
+        text += f"🕒 Срок: {task.deadline}\n"
+    if task.tags:
+        text += f"🏷️ Теги: {', '.join([tag.name for tag in task.tags])}\n"
+    if task.subtasks and len(task.subtasks) > 0:
+        text += f"🧩 Подзадачи:\n"
+        for subtask in task.subtasks:
+            text += f"• {subtask.name} {subtask.deadline}\n"
+    # Connected events, notes, goals, ideas
+    if task.events and len(task.events) > 0:
+        text += f"🔗 Связанные события 📅: {', '.join([event.name for event in task.events])}\n"
+    if task.notes and len(task.notes) > 0:
+        text += (
+            f"🔗 Связанные заметки 🗒️: {', '.join([note.name for note in task.notes])}\n"
+        )
+    if task.goals and len(task.goals) > 0:
+        text += (
+            f"🔗 Связанные цели 🎯: {', '.join([goal.name for goal in task.goals])}\n"
+        )
+    if task.ideas and len(task.ideas) > 0:
+        text += (
+            f"🔗 Связанные идеи 💡: {', '.join([idea.name for idea in task.ideas])}\n"
+        )
+    return text
+
 
 # States
 class TasksStates(StatesGroup):
@@ -31,18 +87,26 @@ class TasksStates(StatesGroup):
     CHANGE_TAGS = State()
     DELETE_TASK = State()
 
+
 # Data getters
-async def get_tasks_data(dialog_manager: DialogManager, **kwargs):
+async def get_tasks_data(dialog_manager: DialogManager, **kwargs) -> dict:
     db_session: Session = kwargs["db_session"]
     db_user: DbUser = kwargs["db_user"]
-    tasks = db_session.query(DbTask).filter(
-        DbTask.user_id == db_user.id,
-        DbTask.is_deleted == False
-    ).order_by(DbTask.created.desc()).all()
-    dialog_manager.dialog_data["mode"] = dialog_manager.dialog_data.get("mode", TaskMode.CHANGE_STATUS.value)
+    tasks = (
+        db_session.query(DbTask)
+        .filter(DbTask.user_id == db_user.id, DbTask.is_deleted == False)
+        .order_by(DbTask.created.desc())
+        .all()
+    )
+    dialog_manager.dialog_data["mode"] = dialog_manager.dialog_data.get(
+        "mode", TaskMode.CHANGE_STATUS.value
+    )
     tasks_logger.info(f"Retrieved {len(tasks)} tasks for user {db_user.tg_id}")
-    return {"tasks": tasks,
-            "mode": dialog_manager.dialog_data.get("mode", TaskMode.CHANGE_STATUS.value)}
+    return {
+        "tasks": tasks,
+        "mode": dialog_manager.dialog_data.get("mode", TaskMode.CHANGE_STATUS.value),
+    }
+
 
 def get_subtask_text(subtask: DbSubtask) -> str:
     text = f"✅ " if subtask.is_done else f"❌ "
@@ -51,7 +115,8 @@ def get_subtask_text(subtask: DbSubtask) -> str:
         text += f" ({subtask.deadline})"
     return text
 
-async def get_current_task_data(dialog_manager: DialogManager, **kwargs):
+
+async def get_current_task_data(dialog_manager: DialogManager, **kwargs) -> dict:
     db_session: Session = kwargs["db_session"]
     task_id = dialog_manager.dialog_data.get("selected_task_id")
     if not task_id:
@@ -62,15 +127,15 @@ async def get_current_task_data(dialog_manager: DialogManager, **kwargs):
         tasks_logger.warning(f"Task with id {task_id} not found")
         return {"current_task": None}
     tasks_logger.info(f"Retrieved task {task_id} for details window")
-    return {"current_task": task,
-            "text_for_subtasks": [get_subtask_text(item) for item in task.subtasks],
-            "has_subtasks": len(task.subtasks) > 0}
+    return {
+        "current_task": task,
+        "has_subtasks": len(task.subtasks) > 0,
+        "task_text": get_task_text(task),
+    }
+
 
 async def on_task_selected(
-    callback: CallbackQuery,
-    widget: ManagedWidget,
-    manager: DialogManager,
-    item_id: int
+    callback: CallbackQuery, widget: ManagedWidget, manager: DialogManager, item_id: int
 ) -> None:
     manager.dialog_data["selected_task_id"] = item_id
     tasks_logger.info(f"Task selected: {item_id}")
@@ -83,24 +148,29 @@ async def on_task_selected(
     else:
         await manager.switch_to(TasksStates.TASK_DETAILS)
 
+
 async def on_add_task(
-    callback: CallbackQuery,
-    widget: ManagedWidget,
-    manager: DialogManager
+    callback: CallbackQuery, widget: ManagedWidget, manager: DialogManager
 ) -> None:
     tasks_logger.info("Add task button clicked")
     await manager.switch_to(TasksStates.ADD_TASK)
 
+
 async def on_task_mode_select(
-    callback: CallbackQuery,
-    widget: ManagedWidget,
-    manager: DialogManager
+    callback: CallbackQuery, widget: ManagedWidget, manager: DialogManager
 ) -> None:
-    manager.dialog_data["mode"] = TaskMode.CHANGE_STATUS.value if manager.dialog_data['mode'] == TaskMode.EDIT.value else TaskMode.EDIT.value
+    manager.dialog_data["mode"] = (
+        TaskMode.CHANGE_STATUS.value
+        if manager.dialog_data["mode"] == TaskMode.EDIT.value
+        else TaskMode.EDIT.value
+    )
     tasks_logger.info(f"Task mode select button clicked: {manager.dialog_data['mode']}")
 
+
 # --- NAME ---
-async def on_change_task_name_success(message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, text: str):
+async def on_change_task_name_success(
+    message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, text: str
+) -> None:
     tasks_logger.info(f"Task name changed: {message.text}")
     db_session: Session = dialog_manager.middleware_data["db_session"]
     task_id = dialog_manager.dialog_data["selected_task_id"]
@@ -109,17 +179,27 @@ async def on_change_task_name_success(message: Message, widget: ManagedTextInput
     db_session.commit()
     await dialog_manager.switch_to(TasksStates.TASK_DETAILS)
 
-async def on_change_task_name_error(message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, error: ValidationError):
+
+async def on_change_task_name_error(
+    message: Message,
+    widget: ManagedTextInput,
+    dialog_manager: DialogManager,
+    error: ValidationError,
+) -> None:
     tasks_logger.error(f"Error changing task name: {message.text}")
     await message.answer("Название задачи не должно превышать 50 символов")
+
 
 def on_change_task_name_type_factory(text: str) -> str:
     if len(text) > 50:
         raise ValidationError("Название задачи не должно превышать 50 символов")
     return text
 
+
 # --- DESCRIPTION ---
-async def on_change_task_description_success(message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, text: str):
+async def on_change_task_description_success(
+    message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, text: str
+) -> None:
     tasks_logger.info(f"Task description changed: {message.text}")
     db_session: Session = dialog_manager.middleware_data["db_session"]
     task_id = dialog_manager.dialog_data["selected_task_id"]
@@ -128,17 +208,27 @@ async def on_change_task_description_success(message: Message, widget: ManagedTe
     db_session.commit()
     await dialog_manager.switch_to(TasksStates.TASK_DETAILS)
 
-async def on_change_task_description_error(message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, error: ValidationError):
+
+async def on_change_task_description_error(
+    message: Message,
+    widget: ManagedTextInput,
+    dialog_manager: DialogManager,
+    error: ValidationError,
+) -> None:
     tasks_logger.error(f"Error changing task description: {message.text}")
     await message.answer("Описание задачи не должно превышать 500 символов")
+
 
 def on_change_task_description_type_factory(text: str) -> str:
     if len(text) > 500:
         raise ValidationError("Описание задачи не должно превышать 500 символов")
     return text
 
+
 # --- DEADLINE ---
-async def on_change_task_deadline_success(message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, text: str):
+async def on_change_task_deadline_success(
+    message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, text: str
+) -> None:
     tasks_logger.info(f"Task deadline changed: {message.text}")
     db_session: Session = dialog_manager.middleware_data["db_session"]
     task_id = dialog_manager.dialog_data["selected_task_id"]
@@ -153,9 +243,16 @@ async def on_change_task_deadline_success(message: Message, widget: ManagedTextI
     db_session.commit()
     await dialog_manager.switch_to(TasksStates.TASK_DETAILS)
 
-async def on_change_task_deadline_error(message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, error: ValidationError):
+
+async def on_change_task_deadline_error(
+    message: Message,
+    widget: ManagedTextInput,
+    dialog_manager: DialogManager,
+    error: ValidationError,
+) -> None:
     tasks_logger.error(f"Error changing task deadline: {message.text}")
     await message.answer("Некорректный формат даты. Используйте ГГГГ-ММ-ДД ЧЧ:ММ")
+
 
 def on_change_task_deadline_type_factory(text: str) -> str:
     try:
@@ -164,8 +261,11 @@ def on_change_task_deadline_type_factory(text: str) -> str:
         raise ValidationError("Некорректный формат даты. Используйте ГГГГ-ММ-ДД ЧЧ:ММ")
     return text
 
+
 # --- STATUS ---
-async def on_change_task_status_success(message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, text: str):
+async def on_change_task_status_success(
+    message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, text: str
+) -> None:
     tasks_logger.info(f"Task status changed: {message.text}")
     db_session: Session = dialog_manager.middleware_data["db_session"]
     task_id = dialog_manager.dialog_data["selected_task_id"]
@@ -173,22 +273,38 @@ async def on_change_task_status_success(message: Message, widget: ManagedTextInp
     # Поддерживаем только значения из TaskStatus
     status_map = {s.value: s for s in TaskStatus}
     if text not in status_map:
-        await message.answer("Некорректный статус. Используйте один из: " + ", ".join([s.value for s in TaskStatus]))
+        await message.answer(
+            "Некорректный статус. Используйте один из: "
+            + ", ".join([s.value for s in TaskStatus])
+        )
         return
     db_current_task.status = status_map[text]
     db_session.commit()
     await dialog_manager.switch_to(TasksStates.TASK_DETAILS)
 
-async def on_change_task_status_error(message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, error: ValidationError):
+
+async def on_change_task_status_error(
+    message: Message,
+    widget: ManagedTextInput,
+    dialog_manager: DialogManager,
+    error: ValidationError,
+) -> None:
     tasks_logger.error(f"Error changing task status: {message.text}")
-    await message.answer("Некорректный статус. Используйте один из: " + ", ".join([s.value for s in TaskStatus]))
+    await message.answer(
+        "Некорректный статус. Используйте один из: "
+        + ", ".join([s.value for s in TaskStatus])
+    )
+
 
 def on_change_task_status_type_factory(text: str) -> str:
     if text not in [s.value for s in TaskStatus]:
         raise ValidationError("Некорректный статус")
     return text
 
-async def change_task_status(callback: CallbackQuery, widget: Select, manager: DialogManager, item_id: str):
+
+async def change_task_status(
+    callback: CallbackQuery, widget: Select, manager: DialogManager, item_id: str
+) -> None:
     """
     Handler for changing the status of a task via Select widget.
     item_id: TaskStatus.name (str)
@@ -206,6 +322,7 @@ async def change_task_status(callback: CallbackQuery, widget: Select, manager: D
     await manager.switch_to(TasksStates.TASK_DETAILS)
     await callback.answer("Статус обновлён")
 
+
 tasks_dialog = Dialog(
     Window(
         Const("📋 Ваши задачи:"),
@@ -213,44 +330,76 @@ tasks_dialog = Dialog(
             Row(
                 Select(
                     Format("{item.status.value} {item.name}"),
-                    id="task_select",
+                    id="select_task",
                     item_id_getter=lambda x: x.id,
                     items="tasks",
                     on_click=on_task_selected,
-                    when="tasks"
+                    when="tasks",
                 )
             ),
             hide_on_single_page=True,
-            id="tasks_scroll",
+            id="scroll_tasks",
             height=8,
-            width=1
+            width=1,
         ),
-        Button(Format("{mode}"), id="task_mode_select", on_click=on_task_mode_select),
+        Button(Format("{mode}"), id="select_task_mode", on_click=on_task_mode_select),
         Button(Const("➕ Добавить задачу"), id="add_task", on_click=on_add_task),
         Cancel(Const("🔙 Закрыть")),
         state=TasksStates.TASKS_LIST,
-        getter=get_tasks_data
+        getter=get_tasks_data,
     ),
     Window(
-        Format("🔹 {current_task.name}"),
-        Format("📝 Описание: {current_task.description}"),
-        Format("🔍 Статус: {current_task.status.value}"),
-        Const("🧩 Подзадачи:", when="has_subtasks"),
-        List(
-            field= Format("• {item}"),
-            items="text_for_subtasks"
+        Format("{task_text}"),
+        Group(
+            SwitchTo(
+                Const("✏️ Имя"), id="change_task_name", state=TasksStates.CHANGE_NAME
+            ),
+            SwitchTo(
+                Const("📝 Описание"),
+                id="change_task_description",
+                state=TasksStates.CHANGE_DESCRIPTION,
+            ),
+            SwitchTo(
+                Const("⏰ Срок"),
+                id="change_task_deadline",
+                state=TasksStates.CHANGE_DEADLINE,
+            ),
+            SwitchTo(
+                Const("🏷️ Теги"), id="change_task_tags", state=TasksStates.CHANGE_TAGS
+            ),
+            SwitchTo(
+                Const("🔄 Статус"),
+                id="change_task_status",
+                state=TasksStates.CHANGE_STATUS,
+            ),
+            SwitchTo(
+                Const("🔗 Cобытия 📅"),
+                id="change_task_events",
+                state=TasksStates.CHANGE_EVENTS,
+            ),
+            SwitchTo(
+                Const("🔗 Заметки 🗒️"),
+                id="change_task_notes",
+                state=TasksStates.CHANGE_NOTES,
+            ),
+            SwitchTo(
+                Const("🔗 Цели 🎯"),
+                id="change_task_goals",
+                state=TasksStates.CHANGE_GOALS,
+            ),
+            SwitchTo(
+                Const("🔗 Идеи 💡"),
+                id="change_task_ideas",
+                state=TasksStates.CHANGE_IDEAS,
+            ),
+            SwitchTo(
+                Const("🗑️ Удалить"), id="delete_task", state=TasksStates.DELETE_TASK
+            ),
+            width=2,
         ),
-        Format("🕒 Срок: {current_task.deadline}"),
-        Format("🏷️ Теги: {current_task.tag}"),
-        SwitchTo(Const("✏️ Имя"), id="change_name", state=TasksStates.CHANGE_NAME),
-        SwitchTo(Const("📝 Описание"), id="change_description", state=TasksStates.CHANGE_DESCRIPTION),
-        SwitchTo(Const("⏰ Срок"), id="change_deadline", state=TasksStates.CHANGE_DEADLINE),
-        SwitchTo(Const("🏷️ Теги"), id="change_tags", state=TasksStates.CHANGE_TAGS),
-        SwitchTo(Const("🔄 Статус"), id="change_status", state=TasksStates.CHANGE_STATUS),
-        SwitchTo(Const("🗑️ Удалить"), id="delete_task", state=TasksStates.DELETE_TASK),
         Back(Const("🔙 Назад"), id="back_to_tasks"),
         state=TasksStates.TASK_DETAILS,
-        getter=get_current_task_data
+        getter=get_current_task_data,
     ),
     # --- NAME ---
     Window(
@@ -258,13 +407,15 @@ tasks_dialog = Dialog(
         Format("🏷️ Текущее название: {current_task.name}"),
         Const("⚠️ Название задачи не должно превышать 50 символов"),
         Const("📝 Введите новое название задачи:"),
-        TextInput(id="change_task_name_input",
-                     type_factory=on_change_task_name_type_factory,
-                     on_success=on_change_task_name_success,
-                     on_error=on_change_task_name_error),
+        TextInput(
+            id="change_task_name_input",
+            type_factory=on_change_task_name_type_factory,
+            on_success=on_change_task_name_success,
+            on_error=on_change_task_name_error,
+        ),
         Back(Const("🔙 Назад"), id="back_to_task_details"),
         state=TasksStates.CHANGE_NAME,
-        getter=get_current_task_data
+        getter=get_current_task_data,
     ),
     # --- DESCRIPTION ---
     Window(
@@ -272,13 +423,15 @@ tasks_dialog = Dialog(
         Format("📝 Текущее описание: {current_task.description}"),
         Const("⚠️ Описание задачи не должно превышать 500 символов"),
         Const("📝 Введите новое описание задачи:"),
-        TextInput(id="change_task_description_input",
-                     type_factory=on_change_task_description_type_factory,
-                     on_success=on_change_task_description_success,
-                     on_error=on_change_task_description_error),
+        TextInput(
+            id="change_task_description_input",
+            type_factory=on_change_task_description_type_factory,
+            on_success=on_change_task_description_success,
+            on_error=on_change_task_description_error,
+        ),
         Back(Const("🔙 Назад"), id="back_to_task_details"),
         state=TasksStates.CHANGE_DESCRIPTION,
-        getter=get_current_task_data
+        getter=get_current_task_data,
     ),
     # --- DEADLINE ---
     Window(
@@ -286,13 +439,15 @@ tasks_dialog = Dialog(
         Format("🕒 Текущий срок: {current_task.deadline}"),
         Const("⚠️ Введите срок в формате: ГГГГ-ММ-ДД ЧЧ:ММ"),
         Const("📝 Введите новый срок задачи:"),
-        TextInput(id="change_task_deadline_input",
-                     type_factory=on_change_task_deadline_type_factory,
-                     on_success=on_change_task_deadline_success,
-                     on_error=on_change_task_deadline_error),
+        TextInput(
+            id="change_task_deadline_input",
+            type_factory=on_change_task_deadline_type_factory,
+            on_success=on_change_task_deadline_success,
+            on_error=on_change_task_deadline_error,
+        ),
         Back(Const("🔙 Назад"), id="back_to_task_details"),
         state=TasksStates.CHANGE_DEADLINE,
-        getter=get_current_task_data
+        getter=get_current_task_data,
     ),
     # --- STATUS ---
     Window(
@@ -308,6 +463,6 @@ tasks_dialog = Dialog(
         ),
         Back(Const("🔙 Назад"), id="back_to_task_details"),
         state=TasksStates.CHANGE_STATUS,
-        getter=get_current_task_data
+        getter=get_current_task_data,
     ),
 )

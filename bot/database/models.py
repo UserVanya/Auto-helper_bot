@@ -157,6 +157,12 @@ class DbTag(Base):
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     user = relationship('DbUser', back_populates='tags')
 
+    tasks = relationship('DbTask', secondary=task_tag, back_populates='tags')
+    events = relationship('DbEvent', secondary=event_tag, back_populates='tags')
+    goals = relationship('DbGoal', secondary=goal_tag, back_populates='tags')
+    ideas = relationship('DbIdea', secondary=idea_tag, back_populates='tags')
+    notes = relationship('DbNote', secondary=note_tag, back_populates='tags')
+
 # Task model
 class DbTask(Base):
     __tablename__ = 'tasks'
