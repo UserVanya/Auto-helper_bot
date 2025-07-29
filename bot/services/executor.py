@@ -55,7 +55,7 @@ def _add_tasks_with_subtasks(session: Session, tasks, user_id: int) -> list:
     added_items = []
     
     for task in tasks:
-        db_task = db_models.Task(
+        db_task = db_models.DbTask(
             name=task.name,
         description=getattr(task, "description", None),
         status=getattr(task, "status", None).value if getattr(task, "status", None) else None,
@@ -75,7 +75,7 @@ def _add_tasks_with_subtasks(session: Session, tasks, user_id: int) -> list:
         # Добавляем подзадачи для этой задачи
         if getattr(task, "subtasks", None):
             for subtask in getattr(task, "subtasks", []):
-                db_subtask = db_models.Subtask(
+                db_subtask = db_models.DbSubtask(
                     name=subtask.name,
                     deadline=getattr(subtask, "deadline", None),
                     task_id=db_task.id,
@@ -96,7 +96,7 @@ def _add_subtasks_for_existing_tasks(session: Session, subtasks, user_id: int) -
     added_items = []
     
     for subtask in subtasks:
-        db_subtask = db_models.Subtask(
+        db_subtask = db_models.DbSubtask(
             name=subtask.name,
             deadline=getattr(subtask, "deadline", None),
             task_id=subtask.id,  # id существующей задачи

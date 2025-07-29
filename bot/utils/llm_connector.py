@@ -17,7 +17,7 @@ client = OpenAI(
 
 MODEL = env("MODEL")
 
-def send_prompt_to_llm(prompt: str, session: Session) -> str:
+def send_prompt_to_llm(prompt: str, session: Session, user_id: int) -> str:
     """
     Отправляет текстовый prompt в LLM (openrouter) с system-промптом и возвращает ответ.
     """
@@ -31,7 +31,10 @@ def send_prompt_to_llm(prompt: str, session: Session) -> str:
             model=MODEL,
             messages=[
                 #{"role": "system", "content": build_system_prompt(session)},
-                {"role": "user", "content": build_system_prompt(session) + "\n\n" + prompt}
+                {
+                    "role": "user", 
+                    "content": build_system_prompt(session, user_id) + "\n\n" + prompt
+                }
             ],
             temperature=1
         )

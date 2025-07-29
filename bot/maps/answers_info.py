@@ -3,13 +3,13 @@ from database import models as db_models
 
 # Маппинг для add/edit/delete моделей
 answer_to_db = {
-    "tasks": {"add": answer_models.TaskAddModel, "edit": answer_models.TaskEditModel, "db": db_models.Task},
-    "subtasks": {"add": answer_models.SubtaskAddToExistingTaskModel, "edit": answer_models.SubtaskEditModel, "db": db_models.Subtask},
-    "events": {"add": answer_models.EventAddModel, "edit": answer_models.EventEditModel, "db": db_models.Event},
-    "goals": {"add": answer_models.GoalAddModel, "edit": answer_models.GoalEditModel, "db": db_models.Goal},
-    "ideas": {"add": answer_models.IdeaAddModel, "edit": answer_models.IdeaEditModel, "db": db_models.Idea},
-    "notes": {"add": answer_models.NoteAddModel, "edit": answer_models.NoteEditModel, "db": db_models.Note},
-    "tags": {"add": answer_models.TagAddModel, "edit": answer_models.TagEditModel, "db": db_models.Tag},
+    "tasks": {"add": answer_models.TaskAddModel, "edit": answer_models.TaskEditModel, "db": db_models.DbTask},
+    "subtasks": {"add": answer_models.SubtaskAddToExistingTaskModel, "edit": answer_models.SubtaskEditModel, "db": db_models.DbSubtask},
+    "events": {"add": answer_models.EventAddModel, "edit": answer_models.EventEditModel, "db": db_models.DbEvent},
+    "goals": {"add": answer_models.GoalAddModel, "edit": answer_models.GoalEditModel, "db": db_models.DbGoal},
+    "ideas": {"add": answer_models.IdeaAddModel, "edit": answer_models.IdeaEditModel, "db": db_models.DbIdea},
+    "notes": {"add": answer_models.NoteAddModel, "edit": answer_models.NoteEditModel, "db": db_models.DbNote},
+    "tags": {"add": answer_models.TagAddModel, "edit": answer_models.TagEditModel, "db": db_models.DbTag},
 }
 
 delete_model_map = {

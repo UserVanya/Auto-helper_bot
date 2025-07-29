@@ -11,9 +11,9 @@ env = Env()
 env.read_env()
 
 whisper_dir = env("WHISPER_CACHE_DIR")
-whisper_model_path = f"{whisper_dir}/small-v3.pt"
+whisper_model_path = f"{whisper_dir}/turbo.pt"
 
-def load_whisper_model(model_path: str, fallback_size: str = 'small'):
+def load_whisper_model(model_path: str, fallback_size: str = 'turbo'):
     """
     Загружает модель Whisper с диска, если есть, иначе скачивает стандартную.
     """

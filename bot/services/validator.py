@@ -72,7 +72,7 @@ def validate_subtasks(
     Валидирует подзадачи.
     """
     for item in resp.to_add.subtasks:
-        db_obj = session.get(db_models.Task, item.task_id)
+        db_obj = session.get(db_models.DbTask, item.task_id)
         if not db_obj:
             errors.append(f"Can't add subtask to non-existent task with id={item.task_id}")
 
