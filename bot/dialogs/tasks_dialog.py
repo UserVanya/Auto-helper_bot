@@ -1,6 +1,6 @@
 import operator
 from aiogram_dialog import Dialog, DialogManager, Window
-from aiogram_dialog.widgets.text import Const, Format, List
+from aiogram_dialog.widgets.text import Const, Format, List, Case
 from aiogram_dialog.widgets.kbd import (
     Button,
     Row,
@@ -31,6 +31,11 @@ import enum
 
 
 class TaskMode(enum.Enum):
+    EDIT = "Режим: ✏️ Редактирование"
+    CHANGE_STATUS = "Режим: 📊 Изменение статуса"
+
+
+class SubtaskMode(enum.Enum):
     EDIT = "Режим: ✏️ Редактирование"
     CHANGE_STATUS = "Режим: 📊 Изменение статуса"
 
@@ -96,10 +101,15 @@ class TasksStates(StatesGroup):
     CHANGE_NOTES = State()
     CHANGE_GOALS = State()
     CHANGE_IDEAS = State()
-    MANAGE_SUBTASKS = State()
+
     ADD_SUBTASK = State()
-    EDIT_SUBTASK = State()
+
     DELETE_TASK = State()
+    # Новые состояния для управления подзадачами
+    SUBTASKS_LIST = State()
+    SUBTASK_DETAILS = State()
+    CHANGE_SUBTASK_NAME = State()
+    DELETE_SUBTASK = State()
 
 
 # Data getters
@@ -109,7 +119,7 @@ async def get_tasks_data(dialog_manager: DialogManager, **kwargs) -> dict:
     tasks = (
         db_session.query(DbTask)
         .filter(DbTask.user_id == db_user.id, DbTask.is_deleted == False)
-        .order_by(DbTask.created.desc())
+        .order_by(DbTask.id.desc())
         .all()
     )
     dialog_manager.dialog_data["mode"] = dialog_manager.dialog_data.get(
@@ -122,10 +132,7 @@ async def get_tasks_data(dialog_manager: DialogManager, **kwargs) -> dict:
     }
 
 
-def get_subtask_text(subtask: DbSubtask) -> str:
-    text = f"✅ " if subtask.is_done else f"❌ "
-    text += f"{subtask.name}"
-    return text
+
 
 
 async def get_current_task_data(dialog_manager: DialogManager, **kwargs) -> dict:
@@ -156,7 +163,7 @@ async def get_events_data(dialog_manager: DialogManager, **kwargs) -> dict:
     all_events = (
         db_session.query(DbEvent)
         .filter(DbEvent.user_id == db_user.id, DbEvent.is_deleted == False)
-        .order_by(DbEvent.name)
+        .order_by(DbEvent.id)
         .all()
     )
     
@@ -189,7 +196,7 @@ async def get_notes_data(dialog_manager: DialogManager, **kwargs) -> dict:
     all_notes = (
         db_session.query(DbNote)
         .filter(DbNote.user_id == db_user.id, DbNote.is_deleted == False)
-        .order_by(DbNote.name)
+        .order_by(DbNote.id)
         .all()
     )
     
@@ -222,7 +229,7 @@ async def get_goals_data(dialog_manager: DialogManager, **kwargs) -> dict:
     all_goals = (
         db_session.query(DbGoal)
         .filter(DbGoal.user_id == db_user.id, DbGoal.is_deleted == False)
-        .order_by(DbGoal.name)
+        .order_by(DbGoal.id)
         .all()
     )
     
@@ -255,7 +262,7 @@ async def get_ideas_data(dialog_manager: DialogManager, **kwargs) -> dict:
     all_ideas = (
         db_session.query(DbIdea)
         .filter(DbIdea.user_id == db_user.id, DbIdea.is_deleted == False)
-        .order_by(DbIdea.name)
+        .order_by(DbIdea.id)
         .all()
     )
     
@@ -288,7 +295,7 @@ async def get_tags_data(dialog_manager: DialogManager, **kwargs) -> dict:
     all_tags = (
         db_session.query(DbTag)
         .filter(DbTag.user_id == db_user.id, DbTag.is_deleted == False)
-        .order_by(DbTag.name)
+        .order_by(DbTag.id)
         .all()
     )
     
@@ -311,36 +318,69 @@ async def get_tags_data(dialog_manager: DialogManager, **kwargs) -> dict:
     }
 
 
-async def get_subtasks_data(dialog_manager: DialogManager, **kwargs) -> dict:
-    """Получение данных для управления подзадачами"""
+
+
+
+async def get_subtasks_list_data(dialog_manager: DialogManager, **kwargs) -> dict:
+    """Получение данных для списка подзадач с режимами"""
     db_session: Session = kwargs["db_session"]
     task_id = dialog_manager.dialog_data.get("selected_task_id")
     
     # Получаем текущую задачу
     current_task = db_session.query(DbTask).filter(DbTask.id == task_id).first()
     if not current_task:
-        return {"current_task": None, "subtasks": [], "subtasks_display": []}
+        return {"current_task": None, "subtasks": [], "mode": SubtaskMode.CHANGE_STATUS.value}
     
     # Получаем все подзадачи текущей задачи (не удаленные)
     subtasks = (
         db_session.query(DbSubtask)
         .filter(DbSubtask.task_id == task_id, DbSubtask.is_deleted == False)
-        .order_by(DbSubtask.created)
+        .order_by(DbSubtask.id)
         .all()
     )
     
-    # Подготавливаем данные для отображения
-    subtasks_display = []
-    for subtask in subtasks:
-        status_icon = "✅" if subtask.is_done else "⬜"
-        text = f"• {subtask.name} {status_icon}"
-        subtasks_display.append(text)
-    
+    # Устанавливаем режим по умолчанию
+    dialog_manager.dialog_data["subtask_mode"] = dialog_manager.dialog_data.get(
+        "subtask_mode", SubtaskMode.CHANGE_STATUS.value
+    )
+    subtasks_info = [
+        {
+            "id": item.id,
+            "info": f"{'✅' if item.is_done else '⬜'} {item.name}",
+        }
+        for item in subtasks
+    ]
+    print(subtasks_info)
+    tasks_logger.info(f"Retrieved {len(subtasks)} subtasks for task {task_id}")
     return {
         "current_task": current_task,
-        "subtasks": subtasks,
-        "subtasks_display": subtasks_display,
-        "has_subtasks": len(subtasks) > 0,
+        "subtasks_info": subtasks_info,
+        "mode": dialog_manager.dialog_data.get("subtask_mode", SubtaskMode.CHANGE_STATUS.value),
+    }
+
+
+async def get_current_subtask_data(dialog_manager: DialogManager, **kwargs) -> dict:
+    """Получение данных текущей подзадачи"""
+    db_session: Session = kwargs["db_session"]
+    subtask_id = dialog_manager.dialog_data.get("selected_subtask_id")
+    task_id = dialog_manager.dialog_data.get("selected_task_id")
+    
+    if not subtask_id:
+        tasks_logger.warning("No selected_subtask_id in dialog_data")
+        return {"current_subtask": None, "current_task": None}
+    
+    subtask = db_session.query(DbSubtask).filter(DbSubtask.id == subtask_id).first()
+    if not subtask:
+        tasks_logger.warning(f"Subtask with id {subtask_id} not found")
+        return {"current_subtask": None, "current_task": None}
+    
+    current_task = db_session.query(DbTask).filter(DbTask.id == task_id).first()
+    
+    tasks_logger.info(f"Retrieved subtask {subtask_id} for details window")
+    return {
+        "current_subtask": subtask,
+        "current_task": current_task,
+        "done_info": f"✅ Выполнена" if subtask.is_done else f"⬜ Не выполнена",
     }
 
 
@@ -359,6 +399,22 @@ async def on_task_selected(
         await manager.switch_to(TasksStates.TASK_DETAILS)
 
 
+async def on_subtask_selected(
+    callback: CallbackQuery, widget: ManagedWidget, manager: DialogManager, item_id: int
+) -> None:
+    manager.dialog_data["selected_subtask_id"] = item_id
+    tasks_logger.info(f"Subtask selected: {item_id}")
+    db_session: Session = manager.middleware_data["db_session"]
+    if manager.dialog_data["subtask_mode"] == SubtaskMode.CHANGE_STATUS.value:
+        db_current_subtask = db_session.query(DbSubtask).filter(DbSubtask.id == item_id).first()
+        db_current_subtask.is_done = not db_current_subtask.is_done
+        db_session.commit()
+        status_text = "выполнена" if db_current_subtask.is_done else "не выполнена"
+        await callback.answer(f"Подзадача теперь {status_text}")
+    else:
+        await manager.switch_to(TasksStates.SUBTASK_DETAILS)
+
+
 async def on_add_task(
     callback: CallbackQuery, widget: ManagedWidget, manager: DialogManager
 ) -> None:
@@ -375,6 +431,17 @@ async def on_task_mode_select(
         else TaskMode.EDIT.value
     )
     tasks_logger.info(f"Task mode select button clicked: {manager.dialog_data['mode']}")
+
+
+async def on_subtask_mode_select(
+    callback: CallbackQuery, widget: ManagedWidget, manager: DialogManager
+) -> None:
+    manager.dialog_data["subtask_mode"] = (
+        SubtaskMode.CHANGE_STATUS.value
+        if manager.dialog_data["subtask_mode"] == SubtaskMode.EDIT.value
+        else SubtaskMode.EDIT.value
+    )
+    tasks_logger.info(f"Subtask mode select button clicked: {manager.dialog_data['subtask_mode']}")
 
 
 # --- NAME ---
@@ -694,51 +761,11 @@ async def on_tags_selection_changed(
     await callback.answer("Связанные теги обновлены")
 
 
-# Обработчики для подзадач
-async def on_subtask_toggle(
-    callback: CallbackQuery, widget: Select, manager: DialogManager, item_id: str
-) -> None:
-    """Переключение статуса выполнения подзадачи"""
-    db_session: Session = manager.middleware_data["db_session"]
-    subtask_id = int(item_id)
-    
-    subtask = db_session.query(DbSubtask).filter(DbSubtask.id == subtask_id).first()
-    if not subtask:
-        await callback.answer("Ошибка: подзадача не найдена", show_alert=True)
-        return
-    
-    subtask.is_done = not subtask.is_done
-    db_session.commit()
-    
-    status_text = "выполнена" if subtask.is_done else "не выполнена"
-    tasks_logger.info(f"Toggled subtask {subtask_id} status to {subtask.is_done}")
-    await callback.answer(f"Подзадача теперь {status_text}")
-
-
 async def on_add_subtask_button(
     callback: CallbackQuery, widget: ManagedWidget, manager: DialogManager
 ) -> None:
     """Переход к добавлению новой подзадачи"""
     await manager.switch_to(TasksStates.ADD_SUBTASK)
-
-
-async def on_delete_subtask(
-    callback: CallbackQuery, widget: Select, manager: DialogManager, item_id: str
-) -> None:
-    """Удаление подзадачи"""
-    db_session: Session = manager.middleware_data["db_session"]
-    subtask_id = int(item_id)
-    
-    subtask = db_session.query(DbSubtask).filter(DbSubtask.id == subtask_id).first()
-    if not subtask:
-        await callback.answer("Ошибка: подзадача не найдена", show_alert=True)
-        return
-    
-    subtask.is_deleted = True
-    db_session.commit()
-    
-    tasks_logger.info(f"Deleted subtask {subtask_id}")
-    await callback.answer("Подзадача удалена")
 
 
 # Обработчики для текстовых полей подзадач
@@ -761,7 +788,7 @@ async def on_add_subtask_success(
     db_session.commit()
     
     tasks_logger.info(f"Added new subtask: {text} for task {task_id}")
-    await dialog_manager.switch_to(TasksStates.MANAGE_SUBTASKS)
+    await dialog_manager.switch_to(TasksStates.SUBTASKS_LIST)
 
 
 async def on_add_subtask_error(
@@ -780,6 +807,80 @@ def on_add_subtask_type_factory(text: str) -> str:
     if len(text) > 100:
         raise ValueError("Название подзадачи не должно превышать 100 символов")
     return text
+
+
+# --- SUBTASK NAME ---
+async def on_change_subtask_name_success(
+    message: Message, widget: ManagedTextInput, dialog_manager: DialogManager, text: str
+) -> None:
+    tasks_logger.info(f"Subtask name changed: {message.text}")
+    db_session: Session = dialog_manager.middleware_data["db_session"]
+    subtask_id = dialog_manager.dialog_data["selected_subtask_id"]
+    db_current_subtask = db_session.query(DbSubtask).filter(DbSubtask.id == subtask_id).first()
+    db_current_subtask.name = text
+    db_session.commit()
+    await dialog_manager.switch_to(TasksStates.SUBTASK_DETAILS)
+
+
+async def on_change_subtask_name_error(
+    message: Message,
+    widget: ManagedTextInput,
+    dialog_manager: DialogManager,
+    error: ValueError,
+) -> None:
+    tasks_logger.error(f"Error changing subtask name: {message.text}")
+    await message.answer("Название подзадачи не должно превышать 100 символов")
+
+
+def on_change_subtask_name_type_factory(text: str) -> str:
+    if len(text) > 100:
+        raise ValueError("Название подзадачи не должно превышать 100 символов")
+    return text
+
+
+
+
+
+# --- SUBTASK STATUS TOGGLE ---
+async def on_subtask_status_toggle(
+    callback: CallbackQuery, widget: ManagedWidget, manager: DialogManager
+) -> None:
+    """Переключение статуса выполнения подзадачи"""
+    db_session: Session = manager.middleware_data["db_session"]
+    subtask_id = manager.dialog_data["selected_subtask_id"]
+    
+    subtask = db_session.query(DbSubtask).filter(DbSubtask.id == subtask_id).first()
+    if not subtask:
+        await callback.answer("Ошибка: подзадача не найдена", show_alert=True)
+        return
+    
+    subtask.is_done = not subtask.is_done
+    db_session.commit()
+    
+    status_text = "выполнена" if subtask.is_done else "не выполнена"
+    tasks_logger.info(f"Toggled subtask {subtask_id} status to {subtask.is_done}")
+    await callback.answer(f"Подзадача теперь {status_text}")
+
+
+# --- SUBTASK DELETE ---
+async def on_delete_subtask_confirm(
+    callback: CallbackQuery, widget: ManagedWidget, manager: DialogManager
+) -> None:
+    """Подтверждение удаления подзадачи"""
+    db_session: Session = manager.middleware_data["db_session"]
+    subtask_id = manager.dialog_data["selected_subtask_id"]
+    
+    subtask = db_session.query(DbSubtask).filter(DbSubtask.id == subtask_id).first()
+    if not subtask:
+        await callback.answer("Ошибка: подзадача не найдена", show_alert=True)
+        return
+    
+    subtask.is_deleted = True
+    db_session.commit()
+    
+    tasks_logger.info(f"Deleted subtask {subtask_id}")
+    await manager.switch_to(TasksStates.SUBTASKS_LIST)
+    await callback.answer("Подзадача удалена")
 
 
 # Обработчик удаления задачи
@@ -876,7 +977,7 @@ tasks_dialog = Dialog(
             SwitchTo(
                 Const("🧩 Подзадачи"),
                 id="manage_subtasks",
-                state=TasksStates.MANAGE_SUBTASKS,
+                state=TasksStates.SUBTASKS_LIST,
             ),
             SwitchTo(
                 Const("🗑️ Удалить"), id="delete_task", state=TasksStates.DELETE_TASK
@@ -1071,42 +1172,50 @@ tasks_dialog = Dialog(
         state=TasksStates.CHANGE_TAGS,
         getter=get_tags_data,
     ),
-    # --- SUBTASKS ---
+    # --- SUBTASKS LIST ---
     Window(
-        Const("🧩 Управление подзадачами"),
+        Const("🧩 Подзадачи задачи:"),
         Format("📋 Задача: {current_task.name}"),
-        Const("Список подзадач:"),
         ScrollingGroup(
-            Group(
-                Select(
-                    Format("{item}"),
-                    id="toggle_subtask",
-                    item_id_getter=operator.itemgetter(0),
-                    items="subtasks_display",
-                    on_click=on_subtask_toggle,
-                ),
-                Select(
-                    Format("🗑️"),
-                    id="delete_subtask",
-                    item_id_getter=operator.itemgetter(0),
-                    items="subtasks_display",
-                    on_click=on_delete_subtask,
-                ),
-                width=2,
+            Select(
+                Format("{item[info]}"),
+                id="select_subtask",
+                item_id_getter=lambda x: x["id"],
+                items="subtasks_info",
+                on_click=on_subtask_selected,
             ),
-            id="subtasks_scroll",
-            height=6,
-            when="has_subtasks",
+            #hide_on_single_page=True,
+            id="scroll_subtasks",
+            height=8,
+            width=1,
         ),
-        Const("У задачи пока нет подзадач", when=~F["has_subtasks"]),
-        Button(
-            Const("➕ Добавить подзадачу"),
-            id="add_subtask",
-            on_click=on_add_subtask_button,
-        ),
+        Button(Format("{mode}"), id="select_subtask_mode", on_click=on_subtask_mode_select),
+        Button(Const("➕ Добавить подзадачу"), id="add_subtask", on_click=on_add_subtask_button),
         SwitchTo(Const("🔙 Назад"), id="back_to_task_details_from_subtasks", state=TasksStates.TASK_DETAILS),
-        state=TasksStates.MANAGE_SUBTASKS,
-        getter=get_subtasks_data,
+        state=TasksStates.SUBTASKS_LIST,
+        getter=get_subtasks_list_data,
+    ),
+    # --- SUBTASK DETAILS ---
+    Window(
+        Format("🔹 {current_subtask.name}"),
+        Format("📝 Статус: {done_info}"),
+        Group(
+            SwitchTo(
+                Const("✏️ Имя"), id="change_subtask_name", state=TasksStates.CHANGE_SUBTASK_NAME
+            ),
+            Button(
+                Const("🔄 Переключить статус"),
+                id="toggle_subtask_status",
+                on_click=on_subtask_status_toggle,
+            ),
+            SwitchTo(
+                Const("🗑️ Удалить"), id="delete_subtask", state=TasksStates.DELETE_SUBTASK
+            ),
+            width=2,
+        ),
+        SwitchTo(Const("🔙 Назад"), id="back_to_subtasks", state=TasksStates.SUBTASKS_LIST),
+        state=TasksStates.SUBTASK_DETAILS,
+        getter=get_current_subtask_data,
     ),
     # --- ADD SUBTASK ---
     Window(
@@ -1120,9 +1229,43 @@ tasks_dialog = Dialog(
             on_success=on_add_subtask_success,
             on_error=on_add_subtask_error,
         ),
-        SwitchTo(Const("🔙 Назад"), id="back_to_subtasks_from_add_subtask", state=TasksStates.MANAGE_SUBTASKS),
+        SwitchTo(Const("🔙 Назад"), id="back_to_subtasks_from_add_subtask", state=TasksStates.SUBTASKS_LIST),
         state=TasksStates.ADD_SUBTASK,
         getter=get_current_task_data,
+    ),
+    # --- CHANGE SUBTASK NAME ---
+    Window(
+        Const("✏️ Меню изменения названия подзадачи"),
+        Format("🏷️ Текущее название: {current_subtask.name}"),
+        Const("⚠️ Название подзадачи не должно превышать 100 символов"),
+        Const("📝 Введите новое название подзадачи:"),
+        TextInput(
+            id="change_subtask_name_input",
+            type_factory=on_change_subtask_name_type_factory,
+            on_success=on_change_subtask_name_success,
+            on_error=on_change_subtask_name_error,
+        ),
+        SwitchTo(Const("🔙 Назад"), id="back_to_subtask_details", state=TasksStates.SUBTASK_DETAILS),
+        state=TasksStates.CHANGE_SUBTASK_NAME,
+        getter=get_current_subtask_data,
+    ),
+
+    # --- DELETE SUBTASK ---
+    Window(
+        Const("🗑️ Удаление подзадачи"),
+        Format("⚠️ Вы действительно хотите удалить подзадачу:\n🔹 {current_subtask.name}"),
+        Const("❗ Это действие нельзя отменить!"),
+        Group(
+            Button(
+                Const("✅ Да, удалить"),
+                id="confirm_delete_subtask",
+                on_click=on_delete_subtask_confirm,
+            ),
+            SwitchTo(Const("❌ Отмена"), id="cancel_delete_subtask", state=TasksStates.SUBTASK_DETAILS),
+            width=2,
+        ),
+        state=TasksStates.DELETE_SUBTASK,
+        getter=get_current_subtask_data,
     ),
     # --- DELETE TASK ---
     Window(

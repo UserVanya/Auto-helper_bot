@@ -18,16 +18,12 @@ response:
         subtasks:
           - # name: обязательное поле, строка
             name: "Пример подзадачи"
-            # order: обязательное поле, integer
-            order: 1
     # subtasks: необязательное поле, список подзадач
     subtasks:
       - # task_id: обязательное поле, integer
         task_id: 1
         # name: обязательное поле, строка
         name: "Подзадача для существующей задачи"
-        # order: обязательное поле, integer
-        order: 1
     # events: необязательное поле, список событий
     events:
       - # name: обязательное поле, строка
@@ -84,8 +80,6 @@ response:
         name: "Новое название подзадачи"
         # is_done: необязательное поле, boolean
         is_done: true
-        # order: необязательное поле, integer
-        order: 1
     # events: необязательное поле, список событий
     events:
       - # id: обязательное поле, integer
