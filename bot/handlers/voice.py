@@ -65,7 +65,7 @@ async def handle_voice_message(message: types.Message, db_session: Session, db_u
     
     # Отправляем в LLM и валидируем ответ
     voice_logger.debug("Sending to LLM...")
-    text_answer = send_prompt_to_llm(text, db_session, db_user.tg_id)
+    text_answer = send_prompt_to_llm(text, db_session, db_user.id)
     
     # Валидируем ответ от LLM, чтобы формат ответа соответствовал модели AnswerModel и ссылки на элементы БД были валидными
     voice_logger.debug("Validating LLM response...")

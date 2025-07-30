@@ -21,6 +21,7 @@ def send_prompt_to_llm(prompt: str, session: Session, user_id: int) -> str:
     """
     Отправляет текстовый prompt в LLM (openrouter) с system-промптом и возвращает ответ.
     """
+    print(user_id)
     llm_logger.info(f"Sending prompt to LLM (model: {MODEL})")
     llm_logger.debug(f"Prompt: {prompt[:200]}...")
     
@@ -56,7 +57,7 @@ def send_prompt_to_llm(prompt: str, session: Session, user_id: int) -> str:
         return response_content
         
     except Exception as e:
-        llm_logger.error(f"Exception during LLM request: {e}")
+        llm_logger.error(f"Exception during LLM request: {e.with_traceback(None)}")
         to_return = {
             "result": "ERROR",
             "error": str(e)
