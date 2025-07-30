@@ -60,7 +60,6 @@ def _add_tasks_with_subtasks(session: Session, tasks, user_id: int) -> list:
         description=getattr(task, "description", None),
         status=getattr(task, "status", None).value if getattr(task, "status", None) else None,
         deadline=getattr(task, "deadline", None),
-        tag=getattr(task, "tag", None),
         user_id=user_id  # Привязка к пользователю
         )
         session.add(db_task)

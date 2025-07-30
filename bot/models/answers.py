@@ -31,7 +31,6 @@ class TaskAddModel(BaseModel):
     description: Optional[str] = Field(default=None)
     status: Optional[StatusEnum] = Field(default=None)
     deadline: Optional[str] = Field(default=None)
-    tag: Optional[Union[int, str]] = Field(default=None)
     subtasks: Optional[List[SubtaskAddToFutureTaskModel]] = Field(default=None)
     model_config = ConfigDict(extra="forbid")
 
@@ -40,14 +39,12 @@ class EventAddModel(BaseModel):
     description: Optional[str] = Field(default=None)
     start_time: Optional[str] = Field(default=None)
     end_time: Optional[str] = Field(default=None)
-    tag: Optional[Union[int, str]] = Field(default=None)
     model_config = ConfigDict(extra="forbid")
 
 class GoalAddModel(BaseModel):
     name: str = Field(...)
     description: Optional[str] = Field(default=None)
     deadline: Optional[str] = Field(default=None)
-    tag: Optional[Union[int, str]] = Field(default=None)
     model_config = ConfigDict(extra="forbid")
 
 class IdeaAddModel(BaseModel):
@@ -55,14 +52,12 @@ class IdeaAddModel(BaseModel):
     description: Optional[str] = Field(default=None)
     is_confirmed: Optional[bool] = Field(default=None)
     is_deleted: Optional[bool] = Field(default=None)
-    tag: Optional[Union[int, str]] = Field(default=None)
     model_config = ConfigDict(extra="forbid")
 
 class NoteAddModel(BaseModel):
     name: str = Field(...)
     description: Optional[str] = Field(default=None)
     is_deleted: Optional[bool] = Field(default=None)
-    tag: Optional[Union[int, str]] = Field(default=None)
     model_config = ConfigDict(extra="forbid")
 
 class TagAddModel(BaseModel):
@@ -87,7 +82,6 @@ class TaskEditModel(BaseModel):
     description: Optional[str] = Field(default=None)
     status: Optional[StatusEnum] = Field(default=None)
     deadline: Optional[str] = Field(default=None)
-    tag: Optional[Union[int, str]] = Field(default=None)
     model_config = ConfigDict(extra="forbid")
 
 class SubtaskEditModel(BaseModel):
@@ -104,7 +98,6 @@ class EventEditModel(BaseModel):
     description: Optional[str] = Field(default=None)
     start_time: Optional[str] = Field(default=None)
     end_time: Optional[str] = Field(default=None)
-    tag: Optional[Union[int, str]] = Field(default=None)
     model_config = ConfigDict(extra="forbid")
 
 class GoalEditModel(BaseModel):
@@ -112,7 +105,6 @@ class GoalEditModel(BaseModel):
     name: Optional[str] = Field(default=None)
     description: Optional[str] = Field(default=None)
     deadline: Optional[str] = Field(default=None)
-    tag: Optional[Union[int, str]] = Field(default=None)
     model_config = ConfigDict(extra="forbid")
 
 class IdeaEditModel(BaseModel):
@@ -121,7 +113,6 @@ class IdeaEditModel(BaseModel):
     description: Optional[str] = Field(default=None)
     is_confirmed: Optional[bool] = Field(default=None)
     is_deleted: Optional[bool] = Field(default=None)
-    tag: Optional[Union[int, str]] = Field(default=None)
     model_config = ConfigDict(extra="forbid")
 
 class NoteEditModel(BaseModel):
@@ -129,7 +120,6 @@ class NoteEditModel(BaseModel):
     name: Optional[str] = Field(default=None)
     description: Optional[str] = Field(default=None)
     is_deleted: Optional[bool] = Field(default=None)
-    tag: Optional[Union[int, str]] = Field(default=None)
     model_config = ConfigDict(extra="forbid")
 
 class TagEditModel(BaseModel):

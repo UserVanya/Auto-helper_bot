@@ -190,7 +190,6 @@ class DbSubtask(Base):
     __tablename__ = 'subtasks'
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
-    deadline = Column(DateTime)
     is_done = Column(Boolean, default=False, nullable=False)
     is_deleted = Column(Boolean, default=False, nullable=False)
     task_id = Column(Integer, ForeignKey('tasks.id'), nullable=False)
@@ -230,7 +229,6 @@ class DbGoal(Base):
     deadline = Column(DateTime)
     is_confirmed = Column(Boolean, default=False, nullable=False)
     is_deleted = Column(Boolean, default=False, nullable=False)
-    tag = Column(String)
     created = Column(DateTime, server_default=func.now(), nullable=False)
     updated = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -250,7 +248,6 @@ class DbIdea(Base):
     description = Column(Text)
     is_confirmed = Column(Boolean, default=False, nullable=False)
     is_deleted = Column(Boolean, default=False, nullable=False)
-    tag = Column(String)
     created = Column(DateTime, server_default=func.now(), nullable=False)
     updated = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -269,7 +266,6 @@ class DbNote(Base):
     name = Column(String, nullable=False)
     description = Column(Text)
     is_deleted = Column(Boolean, default=False, nullable=False)
-    tag = Column(String)
     created = Column(DateTime, server_default=func.now(), nullable=False)
     updated = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 

@@ -14,14 +14,10 @@ response:
         description: "Описание задачи"
         # deadline: необязательное поле, строка, формат YYYY-MM-DDTHH:MM:SS
         deadline: "2024-07-01T10:00:00"
-        # tag: необязательное поле, integer
-        tag: 1
         # subtasks: необязательное поле, список подзадач
         subtasks:
           - # name: обязательное поле, строка
             name: "Пример подзадачи"
-            # deadline: необязательное поле, строка, формат YYYY-MM-DDTHH:MM:SS
-            deadline: "2024-07-01T12:00:00"
             # order: обязательное поле, integer
             order: 1
     # subtasks: необязательное поле, список подзадач
@@ -32,8 +28,6 @@ response:
         name: "Подзадача для существующей задачи"
         # order: обязательное поле, integer
         order: 1
-        # deadline: необязательное поле, строка, формат YYYY-MM-DDTHH:MM:SS
-        deadline: "2024-07-01T12:00:00"
     # events: необязательное поле, список событий
     events:
       - # name: обязательное поле, строка
@@ -44,8 +38,6 @@ response:
         start_time: "2024-07-01T10:00:00"
         # end_time: необязательное поле, строка, формат YYYY-MM-DDTHH:MM:SS
         end_time: "2024-07-01T12:00:00"
-        # tag: необязательное поле, integer
-        tag: 2
     # goals: необязательное поле, список целей
     goals:
       - # name: обязательное поле, строка
@@ -54,24 +46,18 @@ response:
         description: "Описание цели"
         # deadline: необязательное поле, строка, формат YYYY-MM-DDTHH:MM:SS
         deadline: "2024-07-01T10:00:00"
-        # tag: необязательное поле, integer
-        tag: 3
     # ideas: необязательное поле, список идей
     ideas:
       - # name: обязательное поле, строка
         name: "Пример идеи"
         # description: необязательное поле, строка
         description: "Описание идеи"
-        # tag: необязательное поле, integer
-        tag: 4
     # notes: необязательное поле, список заметок
     notes:
       - # name: обязательное поле, строка
         name: "Пример заметки"
         # description: необязательное поле, строка
         description: "Описание заметки"
-        # tag: необязательное поле, integer
-        tag: 5
     # tags: необязательное поле, список тегов
     tags:
       - # name: обязательное поле, строка
@@ -90,16 +76,12 @@ response:
         status: "NEW"
         # deadline: необязательное поле, строка, формат YYYY-MM-DDTHH:MM:SS
         deadline: "2024-07-01T10:00:00"
-        # tag: необязательное поле, integer
-        tag: 6
     # subtasks: необязательное поле, список подзадач
     subtasks:
       - # id: обязательное поле, integer
         id: 1
         # name: необязательное поле, строка
         name: "Новое название подзадачи"
-        # deadline: необязательное поле, строка, формат YYYY-MM-DDTHH:MM:SS
-        deadline: "2024-07-01T10:00:00"
         # is_done: необязательное поле, boolean
         is_done: true
         # order: необязательное поле, integer
@@ -118,8 +100,6 @@ response:
         end_time: "2024-07-01T12:00:00"
         # is_confirmed: необязательное поле, boolean
         is_confirmed: true
-        # tag: необязательное поле, integer
-        tag: 6
     # goals: необязательное поле, список целей
     goals:
       - # id: обязательное поле, integer
@@ -130,8 +110,6 @@ response:
         description: "Новое описание цели"
         # deadline: необязательное поле, строка, формат YYYY-MM-DDTHH:MM:SS
         deadline: "2024-07-01T10:00:00"
-        # tag: необязательное поле, integer
-        tag: 6
         # is_confirmed: необязательное поле, boolean
         is_confirmed: true
     # ideas: необязательное поле, список идей
@@ -144,8 +122,6 @@ response:
         description: "Новое описание идеи"
         # is_confirmed: необязательное поле, boolean
         is_confirmed: true
-        # tag: необязательное поле, integer
-        tag: 6
     # notes: необязательное поле, список заметок
     notes:
       - # id: обязательное поле, integer
@@ -156,8 +132,6 @@ response:
         description: "Новое описание заметки"
         # is_deleted: необязательное поле, boolean
         is_deleted: false
-        # tag: необязательное поле, integer
-        tag: 6
     # tags: необязательное поле, список тегов
     tags:
       - # id: обязательное поле, integer
